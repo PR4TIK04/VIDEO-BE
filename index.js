@@ -7,7 +7,11 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: '*' } });
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://vfe1.vercel.app/', // Replace with your frontend URL
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 
 io.on('connection', (socket) => {
   console.log('New client connected');
