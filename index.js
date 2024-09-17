@@ -1,29 +1,40 @@
 const express = require('express');
 const http = require('http');
-const socketIO = require('socket.io');
+const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIO(server);
+app.use(cors());
 
-// Handle the root request (optional, just to avoid the 'Cannot GET /' error)
-app.get('/', (req, res) => {
-  res.send("WebRTC Signaling Server is running");
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
 });
 
-io.on('connection', socket => {
-  socket.on('join-room', (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit('user-joined', socket.id);
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
 
-    socket.on('sending-signal', (payload) => {
-      io.to(payload.userToSignal).emit('receiving-returned-signal', payload.signal);
-    });
+  // When a viewer requests a connection to the host
+  socket.on('viewer-request', (signal) => {
+    console.log('Viewer is requesting connection');
+    socket.broadcast.emit('viewer-request', signal);
+  });
 
-    socket.on('disconnect', () => {
-      socket.to(roomId).emit('user-disconnected', socket.id);
-    });
+  // When the host responds to the viewer
+  socket.on('host-response', (signal) => {
+    console.log('Host is responding to the viewer');
+    socket.broadcast.emit('host-response', signal);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected:', socket.id);
   });
 });
 
-server.listen(5000, () => console.log('Server is running on port 5000'));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
